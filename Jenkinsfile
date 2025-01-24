@@ -10,6 +10,7 @@ node {
             echo "Checking out the code from the repository..."
             git url: 'https://github.com/Aayush99Sharma/chatapp-modified-ubuntu-22.04.git', branch: 'main'
             echo "Code checked out in workspace at: $WORKSPACE"
+            currentBuild.result = 'SUCCESS'
         }
 
         stage('Sync Code') {
@@ -18,11 +19,13 @@ node {
             sh """
             rsync -avz --exclude '.git' $WORKSPACE/ $TARGET_SERVER:$APP_DIR
             """
+            echo "Code synced successfully."
+            currentBuild.result = 'SUCCESS'
         }
 
         stage('Build') {
             echo "Building the application on the backend server..."
-            def buildStatus = sh(returnStatus: true, script: """
+            sh """
             ssh $TARGET_SERVER 'set -e
             echo "Navigating to application directory..."
             cd $APP_DIR
@@ -32,15 +35,14 @@ node {
 
             echo "Installing dependencies from requirements.txt..."
             pip install -r requirements.txt'
-            """)
-            if (buildStatus != 0) {
-                error "Build stage failed with exit code: ${buildStatus}"
-            }
+            """
+            echo "Build completed successfully."
+            currentBuild.result = 'SUCCESS'
         }
 
         stage('Deploy') {
             echo "Deploying the application on the backend server..."
-            def deployStatus = sh(returnStatus: true, script: """
+            sh """
             ssh $TARGET_SERVER 'set -e
             echo "Navigating to the subdirectory containing manage.py..."
             cd $APP_DIR/$APP_SUBDIR
@@ -56,22 +58,21 @@ node {
 
             echo "Checking the status of the Django service..."
             sudo systemctl status django.service'
-            """)
-            if (deployStatus != 0) {
-                error "Deploy stage failed with exit code: ${deployStatus}"
-            }
+            """
+            echo "Deployment completed successfully."
+            currentBuild.result = 'SUCCESS'
         }
 
     } catch (Exception e) {
         currentBuild.result = 'FAILURE'
         echo "Error: ${e.getMessage()}"
-        throw e
+        throw e // Stops execution immediately when an error occurs.
     } finally {
-        echo "Final build result: ${currentBuild.result}"
         if (currentBuild.result == 'SUCCESS') {
             echo "CI/CD pipeline completed successfully!"
         } else {
             echo "CI/CD pipeline failed. Please check the logs for errors."
+            error "Pipeline execution failed."
         }
     }
 }
