@@ -22,7 +22,7 @@ node {
 
         stage('Build') {
             echo "Building the application on the backend server..."
-            sh """
+            def buildStatus = sh(returnStatus: true, script: """
             ssh $TARGET_SERVER 'set -e
             echo "Navigating to application directory..."
             cd $APP_DIR
@@ -32,12 +32,15 @@ node {
 
             echo "Installing dependencies from requirements.txt..."
             pip install -r requirements.txt'
-            """
+            """)
+            if (buildStatus != 0) {
+                error "Build stage failed with exit code: ${buildStatus}"
+            }
         }
 
         stage('Deploy') {
             echo "Deploying the application on the backend server..."
-            sh """
+            def deployStatus = sh(returnStatus: true, script: """
             ssh $TARGET_SERVER 'set -e
             echo "Navigating to the subdirectory containing manage.py..."
             cd $APP_DIR/$APP_SUBDIR
@@ -53,13 +56,18 @@ node {
 
             echo "Checking the status of the Django service..."
             sudo systemctl status django.service'
-            """
+            """)
+            if (deployStatus != 0) {
+                error "Deploy stage failed with exit code: ${deployStatus}"
+            }
         }
 
     } catch (Exception e) {
         currentBuild.result = 'FAILURE'
+        echo "Error: ${e.getMessage()}"
         throw e
     } finally {
+        echo "Final build result: ${currentBuild.result}"
         if (currentBuild.result == 'SUCCESS') {
             echo "CI/CD pipeline completed successfully!"
         } else {
