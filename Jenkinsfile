@@ -3,6 +3,8 @@ node {
     def APP_DIR = "/new_chatapp"
     def APP_SUBDIR = "fundoo"
     def VENV_DIR = "$APP_DIR/venv"
+    def SONAR_HOST = "http://3.11.80.117:9000"
+    def SONAR_TOKEN = "squ_804b1deddfd21c3ca7c2ed987b02665324d1f7f1"
 
     try {
         stage('Checkout Code') {
@@ -20,6 +22,24 @@ node {
             rsync -avz --exclude '.git' $WORKSPACE/ $TARGET_SERVER:$APP_DIR
             """
             echo "Code synced successfully."
+            currentBuild.result = 'SUCCESS'
+        }
+
+        stage('SonarQube Analysis') {
+            echo "Running SonarQube analysis on the backend server..."
+            sh """
+            ssh $TARGET_SERVER 'set -e
+            cd $APP_DIR
+            sonar-scanner \
+                -Dsonar.projectKey=sonar-project \
+                -Dsonar.sources=. \
+                -Dsonar.host.url=$SONAR_HOST \
+                -Dsonar.login=$SONAR_TOKEN \
+                -Dsonar.language=py \
+                -Dsonar.python.version=3.8 \
+                -Dsonar.qualitygate.wait=true'
+            """
+            echo "SonarQube analysis completed successfully."
             currentBuild.result = 'SUCCESS'
         }
 
