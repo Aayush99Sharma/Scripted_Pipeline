@@ -4,7 +4,7 @@ node {
     def APP_SUBDIR = "fundoo"
     def VENV_DIR = "$APP_DIR/venv"
     def SONAR_HOST = "http://3.11.80.117:9000"
-    def SONAR_TOKEN = "squ_804b1deddfd21c3ca7c2ed987b02665324d1f7f1"
+ 
 
     try {
         stage('Checkout Code') {
